@@ -52,11 +52,15 @@ module Net; module SSH; module Authentication
         include DL::Win32Types
 
         SIZEOF_DWORD = DL::SIZEOF_LONG
+        SIZEOF_VOIDP = DL::SIZEOF_VOIDP
+        SIZEOF_LONG_LONG = DL::SIZEOF_LONG_LONG
       else
         extend Fiddle::Importer
         dlload 'user32','kernel32', 'advapi32'
         include Fiddle::Win32Types
         SIZEOF_DWORD = Fiddle::SIZEOF_LONG
+        SIZEOF_VOIDP = Fiddle::SIZEOF_VOIDP
+        SIZEOF_LONG_LONG = Fiddle::SIZEOF_LONG_LONG
       end
 
       typealias("LPCTSTR", "char *")         # From winnt.h
@@ -216,8 +220,10 @@ module Net; module SSH; module Authentication
         nLength = Win::SECURITY_ATTRIBUTES.size
         lpSecurityDescriptor = psd_information
         bInheritHandle = 1
+        # correctly packing the structure with default alignment - 4-byte for 32-bit platforms, 8-byte for 64-bit
+        pack_signature = (RUBY_VERSION > "1.9" and SIZEOF_VOIDP == SIZEOF_LONG_LONG) ? "QQQ" : "LLC"
         sa = [nLength, lpSecurityDescriptor.to_i,
-              bInheritHandle].pack("LLC")
+              bInheritHandle].pack(pack_signature)
 
         return sa
       end
