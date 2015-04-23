@@ -153,6 +153,9 @@ module Net; module SSH; module Authentication
                                     'LPVOID Group', 'LPVOID Sacl',
                                     'LPVOID Dacl']
 
+      # The COPYDATASTRUCT is used to send WM_COPYDATA messages
+      COPYDATASTRUCT = struct ['uintptr_t dwData', 'DWORD cbData', 'LPVOID lpData']
+
       # Compatibility for security attribute retrieval.
       if RUBY_VERSION < "1.9"
         # Alias functions to > 1.9 capitalization
@@ -364,10 +367,13 @@ module Net; module SSH; module Authentication
 
         Win.set_ptr_data(ptr, query)
 
-        cds = Win.get_ptr [AGENT_COPYDATA_ID, mapname.size + 1,
-                           Win.get_cstr(mapname)].pack("LLp")
+        # using struct to achieve proper alignment and field size on 64-bit platform
+        cds = Win::COPYDATASTRUCT.new(Win.malloc_ptr(Win::COPYDATASTRUCT.size))
+        cds.dwData = AGENT_COPYDATA_ID
+        cds.cbData = mapname.size + 1
+        cds.lpData = Win.get_cstr(mapname)
         succ = Win.SendMessageTimeout(@win, Win::WM_COPYDATA, Win::NULL,
-                                      cds, Win::SMTO_NORMAL, 5000, id)
+                                      cds.to_ptr, Win::SMTO_NORMAL, 5000, id)
 
         if succ > 0
           retlen = 4 + ptr.to_s(4).unpack("N")[0]
